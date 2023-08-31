@@ -38,7 +38,7 @@ jobs:
       - name: Set Dev Build
         run: |
           sed -i "s|main|dev|g" "./src/data/branch.json"
-          sed -i "s|emudeck-electron|emudeck-electron-dev|g" "./package.json"
+          #sed -i "s|emudeck-electron|emudeck-electron-dev|g" "./package.json"
       
       - name: build releases
         env:
