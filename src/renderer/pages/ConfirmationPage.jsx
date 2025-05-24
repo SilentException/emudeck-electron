@@ -1,40 +1,44 @@
-import React, { useEffect, useState, useContext } from 'react';
+import { useTranslation } from 'react-i18next';
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import { GlobalContext } from 'context/globalContext';
 import Wrapper from 'components/molecules/Wrapper/Wrapper';
+
 import Header from 'components/organisms/Header/Header';
 import Footer from 'components/organisms/Footer/Footer';
 
 import Confirmation from 'components/organisms/Wrappers/Confirmation';
 
-const ConfirmationPage = () => {
+function ConfirmationPage() {
+  const { t, i18n } = useTranslation();
   const { state, setState } = useContext(GlobalContext);
-  const { bezels } = state;
+  const { bezels, system } = state;
   const [statePage, setStatePage] = useState({
     disabledNext: false,
     disabledBack: false,
     data: '',
+    dom: undefined,
   });
-  const { disabledNext, disabledBack, data } = statePage;
+  const { disabledNext, disabledBack, data, dom } = statePage;
 
-  //Enabling button when changing the global state only if we have a device selected
+  // Enabling button when changing the global state only if we have a device selected
   useEffect(() => {
-    if (bezels != '') {
+    if (bezels !== '') {
       setStatePage({ ...statePage, disabledNext: false });
     }
-  }, [state]); // <-- here put the parameter to listen
+  }, [state]);
 
   return (
     <Wrapper>
-      <Header title="Here is what EmuDeck will do" />
+      <Header title={t('ConfirmationPage.title')} />
       <Confirmation data={data} />
       <Footer
         next="end"
-        nextText="Finish"
+        nextText={t('general.finish')}
         disabledNext={disabledNext}
         disabledBack={disabledBack}
       />
     </Wrapper>
   );
-};
+}
 
 export default ConfirmationPage;

@@ -1,33 +1,43 @@
-import React, { useEffect, useState, useContext } from 'react';
+import { useTranslation } from 'react-i18next';
+import React, { useState, useContext, useRef, useEffect } from 'react';
 import { GlobalContext } from 'context/globalContext';
 import Wrapper from 'components/molecules/Wrapper/Wrapper';
+
 import Header from 'components/organisms/Header/Header';
 import Footer from 'components/organisms/Footer/Footer';
 
 import CHDTool from 'components/organisms/Wrappers/CHDTool';
 
-const CHDToolPage = () => {
+function CHDToolPage() {
+  const { t, i18n } = useTranslation();
   const { state, setState } = useContext(GlobalContext);
-
-  const [statePage, setStatePage] = useState({
+  const { system } = state;
+  const [statePage] = useState({
     disabledNext: false,
     disabledBack: false,
+    dom: undefined,
   });
 
-  const { storagePath } = state;
-  const { disabledNext, disabledBack } = statePage;
+  const { disabledNext, disabledBack, dom } = statePage;
 
   const ipcChannel = window.electron.ipcRenderer;
 
   const runCHD = (data) => {
-    ipcChannel.sendMessage('bash-nolog', [
-      `konsole -e "/bin/bash $HOME/.config/EmuDeck/backend/tools/chdconv/chddeck.sh"`,
-    ]);
+    if (system == 'win32') {
+      ipcChannel.sendMessage('bash-nolog', [
+        `powershell -ExecutionPolicy Bypass -NoExit . $env:APPDATA\EmuDeck\backend\tools\chdconv\chddeck.ps1"`,
+      ]);
+    } else {
+      ipcChannel.sendMessage('bash-nolog', [
+        `konsole -e "/bin/bash $HOME/.config/EmuDeck/backend/tools/chdconv/chddeck.sh"`,
+      ]);
+    }
   };
 
   return (
     <Wrapper>
-      <Header title="EmuDeck" bold="Compression Tool" />
+      <Header title={t('CHDToolPage.title')} />
+      <p className="lead">{t('CHDToolPage.description')}</p>
       <CHDTool onClick={runCHD} />
       <Footer
         next={false}
@@ -36,6 +46,6 @@ const CHDToolPage = () => {
       />
     </Wrapper>
   );
-};
+}
 
 export default CHDToolPage;

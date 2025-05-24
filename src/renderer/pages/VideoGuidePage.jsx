@@ -1,18 +1,22 @@
-import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import React, { useState, useRef, useEffect } from 'react';
 import Wrapper from 'components/molecules/Wrapper/Wrapper';
+
 import Header from 'components/organisms/Header/Header';
 import Footer from 'components/organisms/Footer/Footer';
 
 import VideoGuide from 'components/organisms/Wrappers/VideoGuide';
 
-const VideoGuidePage = () => {
+function VideoGuidePage() {
+  const { t, i18n } = useTranslation();
   const [statePage, setStatePage] = useState({
     disabledNext: false,
     disabledBack: false,
     showNotification: false,
     minute: 0,
+    dom: undefined,
   });
-  const { disabledNext, disabledBack, minute } = statePage;
+  const { disabledNext, disabledBack, minute, dom } = statePage;
 
   const changeMinute = (value) => {
     setStatePage({
@@ -31,6 +35,6 @@ const VideoGuidePage = () => {
       />
     </Wrapper>
   );
-};
+}
 
 export default VideoGuidePage;

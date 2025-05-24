@@ -1,32 +1,36 @@
-import React, { useEffect, useState, useContext } from 'react';
+import { useTranslation } from 'react-i18next';
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import { GlobalContext } from 'context/globalContext';
 import { useNavigate } from 'react-router-dom';
 import Wrapper from 'components/molecules/Wrapper/Wrapper';
+
 import Header from 'components/organisms/Header/Header';
-import Footer from 'components/organisms/Footer/Footer';
 
 import StoreFront from 'components/organisms/Wrappers/StoreFront';
-import { Img, BtnSimple } from 'getbasecore/Atoms';
+import { BtnSimple } from 'getbasecore/Atoms';
+
 function StoreFrontPage() {
-  const { state, setState } = useContext(GlobalContext);
+  const { t, i18n } = useTranslation();
+  const { state } = useContext(GlobalContext);
   const { bezels } = state;
   const [statePage, setStatePage] = useState({
     disabledNext: false,
     disabledBack: false,
     data: '',
+    dom: undefined,
   });
-  const { disabledNext, disabledBack, data } = statePage;
+  const { disabledNext, disabledBack, data, dom } = statePage;
   const navigate = useNavigate();
-  //Enabling button when changing the global state only if we have a device selected
+  // Enabling button when changing the global state only if we have a device selected
   useEffect(() => {
-    if (bezels != '') {
+    if (bezels !== '') {
       setStatePage({ ...statePage, disabledNext: false });
     }
-  }, [state]); // <-- here put the parameter to listen
+  }, [state]);
 
   return (
     <Wrapper>
-      <Header title="" />
+      <Header title={t('StoreFrontPage.title')} />
       <StoreFront
         data={data}
         disabledNext={disabledNext}
@@ -40,7 +44,7 @@ function StoreFrontPage() {
           disabled={false}
           onClick={() => navigate(-1)}
         >
-          Go Back
+          {t('general.back')}
         </BtnSimple>
       </footer>
     </Wrapper>

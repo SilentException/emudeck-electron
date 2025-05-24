@@ -1,25 +1,22 @@
 import React, { useEffect, useState, useContext, useRef } from 'react';
 import { GlobalContext } from 'context/globalContext';
 import Wrapper from 'components/molecules/Wrapper/Wrapper';
+
+import EmuModal from 'components/molecules/EmuModal/EmuModal';
 import Header from 'components/organisms/Header/Header';
-import Footer from 'components/organisms/Footer/Footer';
+import ProgressBar from 'components/atoms/ProgressBar/ProgressBar';
+import Kamek from 'components/organisms/Kamek/Kamek';
+
 import { useNavigate } from 'react-router-dom';
 import Main from 'components/organisms/Main/Main';
-import { Alert } from 'getbasecore/Molecules';
 
-//Ask for branch
+import { BtnSimple } from 'getbasecore/Atoms';
+
+// Ask for branch
 const branchFile = require('data/branch.json');
-const branch = branchFile.branch;
 
-import {
-  BtnSimple,
-  ProgressBar,
-  FormInputSimple,
-  LinkSimple,
-} from 'getbasecore/Atoms';
-import { Form } from 'getbasecore/Molecules';
+const { branch } = branchFile;
 
-import Card from 'components/molecules/Card/Card';
 function CheckUpdatePage() {
   const ipcChannel = window.electron.ipcRenderer;
   const { state, setState, setStateCurrentConfigs } = useContext(GlobalContext);
@@ -30,49 +27,302 @@ function CheckUpdatePage() {
     update: null,
     cloned: null,
     data: '',
+    dom: undefined,
+    modal: {
+      active: true,
+      header: <span className="h4">Checking for updates...</span>,
+      body: (
+        <p>
+          Please stand by while we check if there is a new version available...
+        </p>
+      ),
+      footer: <ProgressBar css="progress--success" infinite max="100" />,
+      css: 'emumodal--xs emumodal--loading',
+    },
   });
-  const { disabledNext, disabledBack, downloadComplete, data, cloned, update } =
-    statePage;
+
+  const statePageRef = useRef(statePage);
+  statePageRef.current = statePage;
+  const { downloadComplete, cloned, update, modal } = statePageRef.current;
   const navigate = useNavigate();
-
-  const {
-    device,
-    system,
-    mode,
-    command,
-    second,
-    installEmus,
-    overwriteConfigEmus,
-    shaders,
-    achievements,
-  } = state;
-
   const updateRef = useRef(update);
   updateRef.current = update;
 
   const downloadCompleteRef = useRef(downloadComplete);
   downloadCompleteRef.current = downloadComplete;
 
-  //Download files
-  const [counter, setCounter] = useState(0);
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCounter((prevCounter) => {
-        if (prevCounter === 110) {
-          prevCounter = -10;
-        }
-        return prevCounter + 1;
-      });
-    }, 100);
+  const {
+    system,
+    second,
+    installEmus,
+    android,
+    installFrontends,
+    overwriteConfigEmus,
+    shaders,
+    achievements,
+  } = state;
 
-    return () => clearInterval(interval);
-  }, []);
   let updateTimeOut;
+  let pullTimeOut;
+  let cloneTimeOut;
+  // Darwin terminal permissions
   useEffect(() => {
-    //Update timeout + Force clone check
-    console.log('UPDATE - SETTING TIMER FOR TIMEOUT');
+    if (system === 'darwin' && second === false) {
+      ipcChannel.sendMessage('bash-nolog', [
+        `osascript -e 'tell app "Terminal" to do script "pwd && exit"'`,
+      ]);
+    }
+  }, [system]);
+
+  const showLog = (system) => {
+    if (system === 'win32') {
+      ipcChannel.sendMessage('bash-nolog', [
+        `start powershell -NoExit -ExecutionPolicy Bypass -command "& { Get-Content $env:APPDATA/emudeck/logs/git.log -Tail 100 -Wait }"`,
+      ]);
+    } else if (system === 'darwin') {
+      ipcChannel.sendMessage('bash-nolog', [
+        `osascript -e 'tell app "Terminal" to do script "clear && tail -f $HOME/.config/EmuDeck/logs/git.log"'`,
+      ]);
+    } else {
+      ipcChannel.sendMessage('bash-nolog', [
+        `konsole -e tail -f "$HOME/.config/EmuDeck/logs/git.log"`,
+      ]);
+    }
+  };
+
+  const updateFiles = () => {
+    // Get latest settings versions in storage
+    const currentVersions = JSON.parse(
+      localStorage.getItem('current_versions')
+    );
+    if (currentVersions) {
+      setStateCurrentConfigs({ ...currentVersions });
+    }
+
+    const settingsStorage = JSON.parse(
+      localStorage.getItem('settings_emudeck')
+    );
+
+    if (settingsStorage) {
+      const shadersStored = settingsStorage.shaders;
+      const overwriteConfigEmusStored = settingsStorage.overwriteConfigEmus;
+      const achievementsStored = settingsStorage.achievements;
+      delete settingsStorage.installEmus.esde;
+      delete settingsStorage.installEmus.pegasus;
+      delete settingsStorage.installEmus.citra;
+      delete settingsStorage.installEmus.lime3ds;
+      delete settingsStorage.installEmus.primehacks;
+      delete settingsStorage.installEmus.melonDS;
+      delete settingsStorage.installEmus.cemunative;
+      delete settingsStorage.overwriteConfigEmus.primehacks;
+      delete settingsStorage.overwriteConfigEmus.citra;
+      delete settingsStorage.overwriteConfigEmus.lime3ds;
+      delete settingsStorage.installEmus.ares;
+      delete settingsStorage.overwriteConfigEmus.ares;
+      delete settingsStorage.android.installEmus.citrammj;
+      delete settingsStorage.android.overwriteConfigEmus.citra;
+      delete settingsStorage.android.overwriteConfigEmus.citrammj;
+      delete settingsStorage.installFrontends;
+      const installEmusStored = settingsStorage.installEmus;
+      // const installFrontendsStored = settingsStorage.installFrontends;
+
+      if (system === 'darwin') {
+        delete settingsStorage.installEmus.ares;
+        delete settingsStorage.installEmus.cemu;
+        delete settingsStorage.installEmus.dolphin;
+        delete settingsStorage.installEmus.duckstation;
+        delete settingsStorage.installEmus.flycast;
+        delete settingsStorage.installEmus.mame;
+        delete settingsStorage.installEmus.melonds;
+        delete settingsStorage.installEmus.mgba;
+        delete settingsStorage.installEmus.pcsx2;
+        delete settingsStorage.installEmus.ppsspp;
+        delete settingsStorage.installEmus.primehack;
+        delete settingsStorage.installEmus.rmg;
+        delete settingsStorage.installEmus.rpcs3;
+        delete settingsStorage.installEmus.ryujinx;
+        delete settingsStorage.installEmus.scummvm;
+        delete settingsStorage.installEmus.vita3k;
+        delete settingsStorage.installEmus.xemu;
+        delete settingsStorage.installEmus.xenia;
+        delete settingsStorage.installEmus.yuzu;
+        delete settingsStorage.installEmus.eden;
+        delete settingsStorage.installEmus.citron;
+
+        delete settingsStorage.overwriteConfigEmus.ares;
+        delete settingsStorage.overwriteConfigEmus.cemu;
+        delete settingsStorage.overwriteConfigEmus.citra;
+        delete settingsStorage.overwriteConfigEmus.dolphin;
+        delete settingsStorage.overwriteConfigEmus.duckstation;
+        delete settingsStorage.overwriteConfigEmus.flycast;
+        delete settingsStorage.overwriteConfigEmus.mame;
+        delete settingsStorage.overwriteConfigEmus.melonds;
+        delete settingsStorage.overwriteConfigEmus.mgba;
+        delete settingsStorage.overwriteConfigEmus.pcsx2;
+        delete settingsStorage.overwriteConfigEmus.ppsspp;
+        delete settingsStorage.overwriteConfigEmus.primehack;
+        delete settingsStorage.overwriteConfigEmus.rmg;
+        delete settingsStorage.overwriteConfigEmus.rpcs3;
+        delete settingsStorage.overwriteConfigEmus.ryujinx;
+        delete settingsStorage.overwriteConfigEmus.scummvm;
+        delete settingsStorage.overwriteConfigEmus.vita3k;
+        delete settingsStorage.overwriteConfigEmus.xemu;
+        delete settingsStorage.overwriteConfigEmus.xenia;
+        delete settingsStorage.overwriteConfigEmus.yuzu;
+        delete settingsStorage.overwriteConfigEmus.citron;
+      }
+
+      if (!settingsStorage.overwriteConfigEmus.esde) {
+        settingsStorage.overwriteConfigEmus.esde = {
+          esde: { id: 'esde', status: true, name: 'EmulationStation DE' },
+        };
+      }
+
+      if (
+        settingsStorage.emulatorAlternative &&
+        settingsStorage.emulatorAlternative.nds === 'melonDS'
+      ) {
+        delete settingsStorage.emulatorAlternative.nds;
+        settingsStorage.emulatorAlternative.nds = 'melonds';
+      }
+
+      if (settingsStorage.themeESDE === 'EPICNOIR') {
+        delete settingsStorage.themeESDE;
+        settingsStorage.themeESDE = [
+          'https://github.com/anthonycaccese/epic-noir-revisited-es-de.git',
+          'epic-noir-revisited-es-de',
+        ];
+      }
+
+      if (settingsStorage.themePegasus === 'gameOS') {
+        delete settingsStorage.themePegasus;
+        settingsStorage.themePegasus = [
+          'https://github.com/PlayingKarrde/gameOS.git',
+          'gameOS',
+        ];
+      }
+      // Theres probably a better way to do this...
+
+      ipcChannel.sendMessage('version');
+
+      ipcChannel.once('version-out', (version) => {
+        ipcChannel.sendMessage('system-info-in');
+        ipcChannel.once('system-info-out', (platform) => {
+          console.log({
+            system: platform,
+            version: version[0],
+            gamemode: version[1],
+          });
+          let systemNameValue;
+          switch (platform) {
+            case 'darwin':
+              systemNameValue = '\uF8FF';
+              break;
+            case 'win32':
+              systemNameValue = 'Windows';
+              break;
+            case 'SteamOS':
+              systemNameValue = 'SteamOS';
+              break;
+            case 'ChimeraOS':
+              systemNameValue = 'ChimeraOS';
+              break;
+            case 'chimeraOS':
+              systemNameValue = 'ChimeraOS';
+              break;
+            case '':
+              systemNameValue = 'ERROR';
+              break;
+            case null:
+              systemNameValue = 'ERROR';
+              break;
+            case undefined:
+              systemNameValue = 'ERROR';
+              break;
+            default:
+              systemNameValue = 'Linux';
+              break;
+          }
+          setState({
+            ...state,
+            ...settingsStorage,
+            android: { ...android },
+            installEmus: { ...installEmus, ...installEmusStored },
+            overwriteConfigEmus: {
+              ...overwriteConfigEmus,
+              ...overwriteConfigEmusStored,
+            },
+            achievements: {
+              ...achievements,
+              ...achievementsStored,
+            },
+            shaders: { ...shaders, ...shadersStored },
+            system: platform,
+            systemName: systemNameValue,
+            version: version[0],
+            gamemode: version[1],
+            branch,
+          });
+        });
+      });
+    } else {
+      ipcChannel.sendMessage('version');
+      ipcChannel.once('version-out', (version) => {
+        ipcChannel.sendMessage('system-info-in');
+        ipcChannel.once('system-info-out', (platform) => {
+          console.log({
+            system: platform,
+            version: version[0],
+            gamemode: version[1],
+            branch,
+          });
+          let systemNameValue;
+          switch (platform) {
+            case 'darwin':
+              systemNameValue = '\uF8FF';
+              break;
+            case 'win32':
+              systemNameValue = 'Windows';
+              break;
+            case 'SteamOS':
+              systemNameValue = 'SteamOS';
+              break;
+            case 'ChimeraOS':
+              systemNameValue = 'ChimeraOS';
+              break;
+            case 'chimeraOS':
+              systemNameValue = 'ChimeraOS';
+              break;
+            case '':
+              systemNameValue = 'ERROR';
+              break;
+            case null:
+              systemNameValue = 'ERROR';
+              break;
+            case undefined:
+              systemNameValue = 'ERROR';
+              break;
+            default:
+              systemNameValue = 'Linux';
+              break;
+          }
+          setState({
+            ...state,
+            system: platform,
+            systemName: systemNameValue,
+            version: version[0],
+            gamemode: version[1],
+            branch,
+          });
+        });
+      });
+    }
+  };
+
+  useEffect(() => {
+    // Update timeout + Force clone check
+
     updateTimeOut = setTimeout(() => {
-      console.log('UPDATE - TIMEOUT REACHED!');
       setStatePage({
         ...statePage,
         update: 'up-to-date',
@@ -81,127 +331,138 @@ function CheckUpdatePage() {
     }, 10000);
 
     if (navigator.onLine) {
-      console.log('UPDATE - CHECKING');
       ipcChannel.sendMessage('update-check');
-      console.log('UPDATE - WAITING');
+
       ipcChannel.once('update-check-out', (message) => {
-        //We clear the timeout
+        // We clear the timeout
         clearTimeout(updateTimeOut);
-        console.log('UPDATE - GETTING INFO:');
-        console.log({ message });
+
+        let modalData;
+        if (message[0] === 'updating') {
+          modalData = {
+            active: true,
+            header: <span className="h4">🎉 Updating! 🎉</span>,
+            body: (
+              <p className="h5">
+                EmuDeck will restart as soon as it finishes the update. Hold on
+                tight.
+              </p>
+            ),
+            footer: <ProgressBar css="progress--success" infinite max="100" />,
+            css: 'emumodal--xs emumodal--loading',
+          };
+        }
+
+        if (message[0] === 'update-available') {
+          modalData = {
+            active: true,
+            header: <span className="h4">🎉 Update found! 🎉</span>,
+            body: (
+              <p className="lead">
+                Do you want to update? <br />
+                <strong>This update won't modify your games or settings</strong>
+                <br />
+                Please go to Manage Emulators to apply all the new
+                configurations.
+              </p>
+            ),
+            footer: (
+              <div>
+                <BtnSimple
+                  css="btn-simple--1"
+                  type="button"
+                  aria="Yes"
+                  style={{ marginBottom: 0 }}
+                  onClick={() => doUpdate()}
+                >
+                  Yes
+                </BtnSimple>
+                <BtnSimple
+                  css="btn-simple--2"
+                  type="link"
+                  aria="See Changelog"
+                  target="_blank"
+                  href="https://emudeck.github.io/blog/"
+                >
+                  See Changelog
+                </BtnSimple>
+                <BtnSimple
+                  css="btn-simple--3"
+                  type="button"
+                  aria="No"
+                  style={{ marginBottom: 0 }}
+                  onClick={() => cancelUpdate()}
+                >
+                  No
+                </BtnSimple>
+              </div>
+            ),
+            css: 'emumodal--sm',
+          };
+        }
+
         setStatePage({
           ...statePage,
           update: message[0],
           data: message[1],
+          modal: modalData,
         });
-        if (message[0] == 'up-to-date') {
+        if (message[0] === 'up-to-date') {
           updateFiles();
+        } else {
         }
       });
     } else {
+      updateFiles();
       clearTimeout(updateTimeOut);
       setStatePage({
         ...statePage,
         update: 'up-to-date',
       });
-      console.log('No internet connection');
     }
 
-    const updateFiles = () => {
-      const currentVersions = JSON.parse(
-        localStorage.getItem('current_versions_beta')
-      );
-      if (!!currentVersions) {
-        setStateCurrentConfigs({ ...currentVersions });
-      }
+    const doUpdate = () => {
+      ipcChannel.sendMessage('update-start');
 
-      const settingsStorage = JSON.parse(
-        localStorage.getItem('settings_emudeck')
-      );
-      //console.log({ settingsStorage });
-      if (!!settingsStorage) {
-        const shadersStored = settingsStorage.shaders;
-        const overwriteConfigEmusStored = settingsStorage.overwriteConfigEmus;
-        const achievementsStored = settingsStorage.achievements;
-
-        console.log({ overwriteConfigEmusStored });
-        console.log({ overwriteConfigEmus });
-
-        delete settingsStorage.installEmus.primehacks;
-        delete settingsStorage.installEmus.cemunative;
-        delete settingsStorage.overwriteConfigEmus.primehacks;
-        const installEmusStored = settingsStorage.installEmus;
-
-        //Theres probably a better way to do this...
-        console.log('2 - VERSION - CHECKING');
-        ipcChannel.sendMessage('version');
-
-        ipcChannel.once('version-out', (version) => {
-          console.log('2 - VERSION - GETTING');
-          console.log({ version });
-          ipcChannel.sendMessage('system-info-in');
-          ipcChannel.once('system-info-out', (platform) => {
-            console.log('2 - VERSION - GETTING SYSTEM TOO');
-            console.log({
-              system: platform,
-              version: version[0],
-              gamemode: version[1],
-            });
-            setState({
-              ...state,
-              ...settingsStorage,
-              installEmus: { ...installEmus, ...installEmusStored },
-              overwriteConfigEmus: {
-                ...overwriteConfigEmus,
-                ...overwriteConfigEmusStored,
-              },
-              achievements: {
-                ...achievements,
-                ...achievementsStored,
-              },
-              shaders: { ...shaders, ...shadersStored },
-              system: platform,
-              version: version[0],
-              gamemode: version[1],
-              branch: branch,
-            });
+      ipcChannel.once('update-check-out', (message) => {
+        if (message[0] === 'updating') {
+          const modalData = {
+            active: true,
+            header: <span className="h4">🎉 Updating! 🎉</span>,
+            body: (
+              <p className="h5">
+                EmuDeck will restart as soon as it finishes the update. Hold on
+                tight.
+              </p>
+            ),
+            footer: <ProgressBar css="progress--success" infinite max="100" />,
+            css: 'emumodal--xs emumodal--loading',
+          };
+          setStatePage({
+            ...statePage,
+            modal: modalData,
           });
-        });
-      } else {
-        console.log('1 - VERSION - CHECKING');
-        ipcChannel.sendMessage('version');
-        ipcChannel.once('version-out', (version) => {
-          console.log('1 - VERSION - GETTING');
-          ipcChannel.sendMessage('system-info-in');
-          ipcChannel.once('system-info-out', (platform) => {
-            console.log('1 - VERSION - GETTING SYSTEM TOO');
-            console.log({
-              system: platform,
-              version: version[0],
-              gamemode: version[1],
-              branch: branch,
-            });
-            setState({
-              ...state,
-              system: platform,
-              version: version[0],
-              gamemode: version[1],
-              branch: branch,
-            });
-          });
-        });
-      }
+        }
+      });
     };
 
-    //ipcChannel.sendMessage('clean-log');
+    const cancelUpdate = () => {
+      updateFiles();
+      setStatePage({
+        ...statePage,
+        update: 'up-to-date',
+      });
+    };
+
+    // ipcChannel.sendMessage('clean-log');
 
     //  setTimeout(() => {
-    // console.log('UPDATE - CHECKING');
+
     // ipcChannel.sendMessage('update-check');
-    // console.log('UPDATE - WAITING');
+
     // ipcChannel.once('update-check-out', (message) => {
-    //   console.log('UPDATE - GETTING INFO:');
-    //   console.log({ message });
+    //
+    //
     //   setStatePage({
     //     ...statePage,
     //     update: message[0],
@@ -214,61 +475,155 @@ function CheckUpdatePage() {
 
   useEffect(() => {
     //
-    //Cloning project
+    // Cloning project
     //
 
-    //Force changelog after update
-    if (update == 'updating') {
+    // Force changelog after update
+    if (update === 'updating') {
       localStorage.setItem('show_changelog', true);
     }
-    if (update == 'up-to-date') {
-      //is the git repo cloned?
-      console.log('check-git');
+    if (update === 'up-to-date') {
+      // is the git repo cloned?
+
+      const modalDataGit = {
+        active: true,
+        header: (
+          <span className="h4">
+            Building EmuDeck backend and running autodiagnostics in the
+            background...
+          </span>
+        ),
+        body: <ProgressBar css="progress--success" infinite max="100" />,
+        footer: (
+          <BtnSimple
+            css="btn-simple--1"
+            type="button"
+            aria="Show log"
+            disabled={false}
+            style={{ marginBottom: 0 }}
+            onClick={() => showLog(system)}
+          >
+            See more details
+          </BtnSimple>
+        ),
+        css: 'emumodal--xs emumodal--loading',
+      };
+
+      // setStatePage({
+      //   ...statePage,
+      //   modal: modalDataGit,
+      // });
+
       ipcChannel.sendMessage('check-git');
-      ipcChannel.once('check-git', (error, cloneStatusCheck, stderr) => {
-        console.log({ error });
-        console.log({ cloneStatusCheck });
-        console.log({ stderr });
-        cloneStatusCheck = cloneStatusCheck.replace('\n', '');
-        cloneStatusCheck.includes('true')
-          ? (cloneStatusCheck = true)
-          : (cloneStatusCheck = false);
+      ipcChannel.once('check-git', (error, stdout, stderr) => {
+        // alert('checking git');
+        const cloneStatusCheck = stdout.replace('\n', '');
+        let cloneStatusCheckValue;
+
+        if (cloneStatusCheck.includes('true')) {
+          cloneStatusCheckValue = true;
+        } else {
+          cloneStatusCheckValue = false;
+        }
+
         setStatePage({
           ...statePage,
-          cloned: cloneStatusCheck,
+          cloned: cloneStatusCheckValue,
+          modal: modalDataGit,
         });
       });
     }
-  }, [update]);
+  }, [update, system]);
 
   useEffect(() => {
-    //settings here
-
-    if (cloned == false) {
+    // settings here
+    if (cloned === false) {
+      // alert('cloneFalse');
       if (navigator.onLine) {
         ipcChannel.sendMessage(`clone`, branch);
-        console.log('clone');
-        ipcChannel.once('clone', (error, cloneStatusClone, stderr) => {
-          console.log({ error });
-          console.log({ cloneStatusClone });
-          console.log({ stderr });
+        cloneTimeOut = setTimeout(() => {
+          ipcChannel.sendMessage('check-git-status', branch);
+          ipcChannel.once('check-git-status', (error) => {
+            if (error.includes('not a git directory')) {
+              // alert('There seems to be an issue, please restart EmuDeck');
+              const modalData = {
+                active: true,
+                header: <span className="h4">Ooops 😞</span>,
+                body: (
+                  <p>
+                    There seems to be an issue building the backend. Please
+                    restart EmuDeck if this screen doesn't dissapear in about 5
+                    seconds
+                  </p>
+                ),
+                css: 'emumodal--xs',
+              };
+              setStatePage({ ...statePageRef.current, modal: modalData });
+            } else {
+              setStatePage({ ...statePageRef.current, downloadComplete: true });
+            }
+          });
+        }, 60000);
+        ipcChannel.once('clone', (error, cloneStatusClone) => {
           if (cloneStatusClone.includes('true')) {
+            clearTimeout(cloneTimeOut);
             setStatePage({ ...statePage, downloadComplete: true });
+            console.log({ downloadComplete });
           }
         });
       } else {
-        alert('You need to be connected to the internet');
+        const modalData = {
+          active: true,
+          header: <span className="h4">Ooops 😞</span>,
+          body: <p>You need to be connected to the internet.</p>,
+          css: 'emumodal--xs emumodal--loading',
+        };
+        setStatePage({
+          ...statePage,
+          modal: modalData,
+        });
       }
-    } else if (cloned == true) {
+    } else if (cloned === true) {
+      // alert('cloned true');
       if (navigator.onLine) {
+        // alert(branch);
+
+        console.log(`GIT PULL ${branch}`);
         ipcChannel.sendMessage('pull', branch);
-        console.log('pull');
-        ipcChannel.once('pull', (error, pullStatus, stderr) => {
-          console.log({ error });
-          console.log({ pullStatus });
-          console.log({ stderr });
-          setStatePage({ ...statePage, downloadComplete: true });
-          //Update timeout
+        pullTimeOut = setTimeout(() => {
+          ipcChannel.sendMessage('check-git-status', branch);
+          ipcChannel.once('check-git-status', (error) => {
+            console.log({ error });
+            if (error.includes('Your branch is up to date')) {
+              setStatePage({ ...statePageRef.current, downloadComplete: true });
+            } else {
+              const modalData = {
+                active: true,
+                header: <span className="h4">Ooops 😞</span>,
+                body: (
+                  <p>
+                    There's been an issue building the backend, please restart
+                    EmuDeck if this screen doesn't dissapear in about 5 seconds.
+                  </p>
+                ),
+                footer: '',
+                css: 'emumodal--xs',
+              };
+              setStatePage({
+                ...statePageRef.current,
+                modal: modalData,
+              });
+            }
+          });
+        }, 20000);
+        ipcChannel.once('pull', (error, stdout, stderr) => {
+          console.log('GIT PULL response');
+          console.log({ error, stdout, stderr });
+
+          updateTimeOut = setTimeout(() => {
+            clearTimeout(pullTimeOut);
+            setStatePage({ ...statePageRef.current, downloadComplete: true });
+          }, 1000);
         });
       } else {
         setStatePage({ ...statePage, downloadComplete: true });
@@ -277,76 +632,21 @@ function CheckUpdatePage() {
   }, [cloned]);
 
   useEffect(() => {
-    if (downloadComplete == true) {
-      if (system === 'win32' || branch == 'early') {
-        navigate('/patreon-login');
-        //navigate('/welcome');
-      } else {
+    console.log({ downloadComplete });
+    if (downloadComplete === true) {
+      if (navigator.onLine) {
         navigate('/welcome');
+      } else {
+        navigate('/settings');
       }
     }
   }, [downloadComplete]);
 
   return (
-    <Wrapper>
-      {update == null && (
-        <>
-          <Header title="Checking for updates..." />
-          <p className="h5">
-            Please stand by while we check if there is a new version available.
-            <br />
-            If this message does not disappear in about 20 seconds, please
-            restart the application.
-          </p>
-          <ProgressBar css="progress--success" value={counter} max="100" />
-        </>
-      )}
-
-      {update === 'updating' && (
-        <>
-          <Header title="🎉 Update found! 🎉" />
-          <p className="h5">
-            We found an update! EmuDeck will restart as soon as it finishes
-            installing the latest update. Hold on tight.
-          </p>
-          <ProgressBar css="progress--success" value={counter} max="100" />
-        </>
-      )}
-      {update === 'up-to-date' && (
-        <>
-          {second === true && <Header title="Checking for updates" />}
-          {second === false && <Header title="Welcome to EmuDeck" />}
-          <Main>
-            {downloadComplete === null && (
-              <>
-                <p className="h5">
-                  Downloading Files. If this progress bar does not disappear
-                  shortly, please restart the application and check if you can
-                  reach GitHub Servers and check our{' '}
-                  <a
-                    className="link-simple link-simple--1"
-                    href="https://github.com/dragoonDorise/EmuDeck/wiki/Frequently-Asked-Questions#why-wont-emudeck-download"
-                  >
-                    Wiki FAQ
-                  </a>{' '}
-                  for possible solutions.
-                </p>
-
-                <ProgressBar
-                  css="progress--success"
-                  value={counter}
-                  max="100"
-                />
-              </>
-            )}
-          </Main>
-          <Footer
-            next="welcome"
-            disabledNext={disabledNext}
-            disabledBack={disabledBack}
-          />
-        </>
-      )}
+    <Wrapper css="wrapper__full" aside={false}>
+      <Kamek />
+      <Header title="EmuDeck is loading..." />
+      <EmuModal modal={modal} />
     </Wrapper>
   );
 }

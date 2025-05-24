@@ -1,168 +1,372 @@
+import { useTranslation } from 'react-i18next';
 import React, { useEffect, useState, useContext, useRef } from 'react';
 import { GlobalContext } from 'context/globalContext';
-import Wrapper from 'components/molecules/Wrapper/Wrapper';
-import Header from 'components/organisms/Header/Header';
-import Footer from 'components/organisms/Footer/Footer';
 import { useNavigate } from 'react-router-dom';
-import Aside from 'components/organisms/Aside/Aside';
-import Header from 'components/organisms/Header/Header';
+
+//
+// components
+//
+import { BtnSimple, FormInputSimple } from 'getbasecore/Atoms';
+import Wrapper from 'components/molecules/Wrapper/Wrapper';
+
 import Main from 'components/organisms/Main/Main';
-import {
-  BtnSimple,
-  ProgressBar,
-  FormInputSimple,
-  LinkSimple,
-} from 'getbasecore/Atoms';
-import { Form } from 'getbasecore/Molecules';
+import Header from 'components/organisms/Header/Header';
 
-const PatroenLoginPage = () => {
-  const ipcChannel = window.electron.ipcRenderer;
-  const { state, setState } = useContext(GlobalContext);
+//
+// hooks
+//
+import useFetch from '../hooks/useFetch';
+
+//
+// imports & requires
+//
+const branchFile = require('data/branch.json');
+
+const { branch } = branchFile;
+
+function PatreonLoginPage() {
+  const { t, i18n } = useTranslation();
+  //
+  // i18
+  //
+
+  //
+  // States
+  //
+
   const [statePage, setStatePage] = useState({
-    patreonClick: false,
+    patreonClicked: false,
     status: null,
-    access_allowed: false,
+    accessAllowed: false,
+    patreonTokenTemp: null,
+    errorMessage: undefined,
   });
-  const { patreonClick, status, access_allowed } = statePage;
+  const {
+    patreonClicked,
+    status,
+    accessAllowed,
+    patreonTokenTemp,
+    errorMessage,
+  } = statePage;
+
+  const { state, setState } = useContext(GlobalContext);
+
+  const {
+    installEmus,
+    overwriteConfigEmus,
+    achievements,
+    shader,
+    patreonToken,
+    patreonStatus,
+  } = state;
+
+  //
+  // Web services
+  //
+  const patreonWS = useFetch('check.php');
+  //
+  // Const & Vars
+  //
   const navigate = useNavigate();
-
-  const { system, patreonToken, patreonStatus } = state;
-
-  const patreonShowInput = () => {
+  const ipcChannel = window.electron.ipcRenderer;
+  //
+  // Functions
+  //
+  const patreonShowInput = (openBrowser = true) => {
     setStatePage({
       ...statePage,
-      patreonClick: true,
+      patreonClicked: true,
     });
   };
 
   const patreonSetToken = (data) => {
-    setState({
-      ...state,
-      patreonToken: data.target.value,
-    });
-  };
+    let patronTokenValue;
 
-  const patreonCheckToken = () => {
-    //We don't check the token if we dont have it stored
-    if (!patreonToken || patreonToken == null) {
-      return;
-    }
+    data.target.value === ''
+      ? (patronTokenValue = null)
+      : (patronTokenValue = data.target.value);
 
     setStatePage({
       ...statePage,
-      status: 'checking',
+      patreonTokenTemp: patronTokenValue,
     });
+  };
 
-    if (patreonToken == 'sG6gE8yJ3sK3xX8c') {
-      setStatePage({
-        ...statePage,
-        access_allowed: true,
-        status: 'Success!',
-      });
-      return;
+  const patreonCheckToken = (tokenArg) => {
+    const settingsStorage = JSON.parse(
+      localStorage.getItem('settings_emudeck')
+    );
+
+    let token;
+    let system = 'NA';
+    let device = 'NA';
+    let installEmus = 'NA';
+
+    if (settingsStorage) {
+      system = settingsStorage.system;
+      device = settingsStorage.device;
+      installEmus = settingsStorage.installEmus;
+    }
+
+    if (!tokenArg) {
+      token = patreonTokenTemp;
     } else {
-      ipcChannel.sendMessage('patreon-check', patreonToken);
-      ipcChannel.on('patreon-check', (error, patreonStatusBack, stderr) => {
-        console.log('PATREON LOGIN CHECK');
-        console.log(patreonStatusBack);
-        //setStatePage({ ...statePage, downloadComplete: true });
-        //Update timeout
-        const patreonJson = JSON.parse(patreonStatusBack);
+      token = tokenArg;
+    }
 
-        if (patreonJson.errors) {
-          alert(patreonJson.errors[0]['detail']);
-          return;
-        }
+    patreonWS
+      .post({ token, system, device, installEmus })
+      .then((data) => {
+        const patreonJson = data;
 
         console.log({ patreonJson });
-
-        if (patreonJson.status === true) {
-          setStatePage({
-            ...statePage,
-            access_allowed: true,
-          });
-        } else {
+        if (patreonJson.error) {
           setStatePage({
             ...statePage,
             status: null,
-            patreonClick: false,
+            patreonClicked: false,
+            errorMessage: patreonJson.error,
+          });
+          return;
+        }
+
+        if (patreonJson.cancel) {
+          setStatePage({
+            ...statePage,
+            accessAllowed: 'cancel',
+          });
+          return;
+        }
+
+        // eslint-disable-next-line promise/always-return
+        if (patreonJson.status === true) {
+          setStatePage({
+            ...statePage,
+            patreonTokenTemp: patreonJson.new_token,
+            accessAllowed: true,
+          });
+        } else {
+          const settingsStorage = JSON.parse(
+            localStorage.getItem('settings_emudeck')
+          );
+          const shadersStored = settingsStorage.shaders;
+          const overwriteConfigEmusStored = settingsStorage.overwriteConfigEmus;
+          const achievementsStored = settingsStorage.achievements;
+
+          delete settingsStorage.installEmus.primehacks;
+          delete settingsStorage.installEmus.cemunative;
+          delete settingsStorage.overwriteConfigEmus.primehacks;
+          const installEmusStored = settingsStorage.installEmus;
+
+          // Theres probably a better way to do this...
+
+          ipcChannel.sendMessage('version');
+
+          ipcChannel.once('version-out', (version) => {
+            ipcChannel.sendMessage('system-info-in');
+            ipcChannel.once('system-info-out', (platform) => {
+              console.log({
+                system: platform,
+                version: version[0],
+                gamemode: version[1],
+              });
+              alert(
+                "No patreon detected, you can use EmuDeck but you won't get new updates"
+              );
+              setState({
+                ...state,
+                patreonStatus: null,
+                //...settingsStorage,
+                system: platform,
+                // version: version[0],
+                second: true,
+                branch: 'early',
+              });
+            });
           });
         }
+      })
+      .catch((error) => {
+        setStatePage({
+          ...statePage,
+          status: null,
+          patreonClicked: false,
+        });
       });
-    }
   };
 
-  // We force the status to false
+  //
+  // UseEffects
+  //
   useEffect(() => {
-    // setState({
-    //   ...state,
-    //   patreonStatus: false,
-    // });
-    console.log({ state });
+    if (patreonStatus === null) {
+      //navigate('/emulators');
+      console.log({ patreonStatus });
+    }
+  }, [patreonStatus]);
+  useEffect(() => {
+    const patreonTokenLS = localStorage.getItem('patreon_token');
+    if (!branch.includes('early')) {
+      navigate('/check-updates');
+    } else if (patreonTokenLS) {
+      patreonCheckToken(patreonTokenLS);
+    }
   }, []);
 
   useEffect(() => {
-    if (access_allowed == true) {
-      setState({
-        ...state,
-        patreonStatus: true,
+    if (accessAllowed === true) {
+      localStorage.setItem('patreon_token', patreonTokenTemp);
+      const partial = patreonTokenTemp.split('|||');
+      const splitToken = partial[1];
+
+      ipcChannel.sendMessage('emudeck', [
+        `storePatreonToken|||storePatreonToken ${splitToken}`,
+      ]);
+      ipcChannel.once('storePatreonToken', (message) => {
+        setState({
+          ...state,
+          patreonToken: splitToken,
+        });
       });
+    } else if (accessAllowed === 'cancel') {
+      const updateOrLogin = confirm(
+        'Please log back in to Patreon to keep EmuDeck updated. Press OK to log in again or Cancel to continue with no updates'
+      );
+      if (!updateOrLogin) {
+        const settingsStorage = JSON.parse(
+          localStorage.getItem('settings_emudeck')
+        );
+        const shadersStored = settingsStorage.shaders;
+        const overwriteConfigEmusStored = settingsStorage.overwriteConfigEmus;
+        const achievementsStored = settingsStorage.achievements;
+
+        delete settingsStorage.installEmus.primehacks;
+        delete settingsStorage.installEmus.cemunative;
+        delete settingsStorage.overwriteConfigEmus.primehacks;
+        const installEmusStored = settingsStorage.installEmus;
+
+        // Theres probably a better way to do this...
+
+        ipcChannel.sendMessage('version');
+
+        ipcChannel.once('version-out', (version) => {
+          ipcChannel.sendMessage('system-info-in');
+          ipcChannel.once('system-info-out', (platform) => {
+            console.log({
+              system: platform,
+              version: version[0],
+              gamemode: version[1],
+            });
+            setState({
+              ...state,
+              patreonStatus: true,
+              ...settingsStorage,
+              installEmus: { ...installEmus, ...installEmusStored },
+              overwriteConfigEmus: {
+                ...overwriteConfigEmus,
+                ...overwriteConfigEmusStored,
+              },
+              achievements: {
+                ...achievements,
+                ...achievementsStored,
+              },
+              shaders: { ...shaders, ...shadersStored },
+              system: platform,
+              version: version[0],
+              gamemode: version[1],
+              branch,
+            });
+          });
+        });
+      }
     }
-  }, [access_allowed]);
+  }, [accessAllowed]);
+  useEffect(() => {
+    if (patreonToken !== null) {
+      navigate('/check-updates');
+    }
+  }, [patreonToken]);
 
   useEffect(() => {
-    if (patreonStatus == true) {
-      navigate('/welcome');
+    if (state.version != '') {
+      navigate('/emulators');
     }
-  }, [patreonStatus]);
+  }, [state]);
+
+  //
+  // Render
+  //
 
   return (
     <Wrapper>
-      <Header title="Login into Patreon" />
+      <Header title={t('PatroenLoginPage.title')} />
       <Main>
-        <p className="lead">
-          Please login to patreon in order to access this beta.
-        </p>
-        {!patreonClick && (
+        {errorMessage === undefined && (
+          <p className="lead">{t('PatroenLoginPage.description')}</p>
+        )}
+        {!!errorMessage && <p className="lead">{errorMessage}</p>}
+
+        {!patreonClicked && (
           <>
             <BtnSimple
               css="btn-simple--3"
               type="link"
               target="_blank"
-              href="https://patreon.emudeck.com/"
-              aria="Next"
+              href="https://token.emudeck.com/"
+              aria={t('PatroenLoginPage.login')}
               onClick={() => patreonShowInput()}
+              disabled={accessAllowed}
             >
-              Login with patreon
+              {accessAllowed || t('PatroenLoginPage.login')}{' '}
+              {accessAllowed && `- ${t('general.loading')}`}
+            </BtnSimple>
+            <BtnSimple
+              css="btn-simple--3"
+              type="link"
+              target="_blank"
+              href="https://patreon.com/"
+              aria={t('PatroenLoginPage.change')}
+            >
+              {t('PatroenLoginPage.change')}
+            </BtnSimple>
+            <BtnSimple
+              css="btn-simple--2"
+              type="button"
+              aria={t('PatroenLoginPage.login')}
+              onClick={() => patreonShowInput(false)}
+              disabled={accessAllowed}
+            >
+              {accessAllowed || t('PatroenLoginPage.license')}{' '}
+              {accessAllowed && `- ${t('general.loading')}`}
             </BtnSimple>
           </>
         )}
-        {patreonClick && (
-          <Form>
+        {patreonClicked && (
+          <div className="form">
             <FormInputSimple
               label="Token"
               type="token"
               name="token"
               id="token"
-              value={patreonToken}
+              value={patreonTokenTemp}
               onChange={patreonSetToken}
             />
-            {patreonToken && (
+            {patreonTokenTemp !== null && (
               <BtnSimple
                 css="btn-simple--3"
                 type="button"
-                aria="Next"
-                onClick={patreonCheckToken}
+                aria={t('general.next')}
+                onClick={() => patreonCheckToken()}
               >
-                {status == null && 'Check Token'}
-                {status == 'checking' && 'Checking token...'}
+                {status === null && t('PatroenLoginPage.check')}
+                {status === 'checking' && t('PatroenLoginPage.checking')}
               </BtnSimple>
             )}
-          </Form>
+          </div>
         )}
       </Main>
     </Wrapper>
   );
-};
+}
 
-export default PatroenLoginPage;
+export default PatreonLoginPage;

@@ -1,35 +1,33 @@
-import React, { useEffect, useState, useContext } from 'react';
-import { GlobalContext } from 'context/globalContext';
+import { useTranslation } from 'react-i18next';
+import React, { useState, useRef, useEffect } from 'react';
 import Wrapper from 'components/molecules/Wrapper/Wrapper';
+
 import Header from 'components/organisms/Header/Header';
 import Footer from 'components/organisms/Footer/Footer';
 
 import Uninstall from 'components/organisms/Wrappers/Uninstall';
 
-const UninstallPage = () => {
-  const { state, setState } = useContext(GlobalContext);
-
-  const [statePage, setStatePage] = useState({
+function UninstallPage() {
+  const { t, i18n } = useTranslation();
+  const [statePage] = useState({
     disabledNext: false,
     disabledBack: false,
+    dom: undefined,
   });
-  const { disabledNext, disabledBack } = statePage;
+  const { disabledNext, disabledBack, dom } = statePage;
 
   const ipcChannel = window.electron.ipcRenderer;
 
-  const uninstall = (data) => {
-    // alert(
-    //   'Open Konsole and paste this code: bash ~/.config/EmuDeck/backend/uninstall.sh'
-    // );
+  const uninstall = () => {
     ipcChannel.sendMessage('bash', [
       'bash ~/.config/EmuDeck/backend/uninstall.sh',
     ]);
-    //window.close();
   };
 
   return (
     <Wrapper>
-      <Header title="Uninstall" bold="EmuDeck" />
+      <Header title={t('UninstallPage.title')} />
+      <p className="lead">{t('UninstallPage.description')}</p>
       <Uninstall
         disabledNext={disabledNext}
         disabledBack={disabledBack}
@@ -42,6 +40,6 @@ const UninstallPage = () => {
       />
     </Wrapper>
   );
-};
+}
 
 export default UninstallPage;

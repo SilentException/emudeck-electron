@@ -10,27 +10,47 @@
 @import './utils/animate/animate.scss';
 
 @font-face {
-  font-family: 'MotivaSans';
-  src: url('assets/fonts/Raleway-Thin.ttf');
+  font-family: 'Avenir';
+  src: url('assets/fonts/avenir-light-webfont.woff2');
   font-weight: 100;
 }
 @font-face {
-  font-family: 'MotivaSans';
-  src: url('assets/fonts/Raleway-Light.ttf');
+  font-family: 'Avenir';
+  src: url('assets/fonts/avenir-light-webfont.woff2');
   font-weight: 200;
 }
 @font-face {
-  font-family: 'MotivaSans';
-  src: url('assets/fonts/Raleway-Regular.ttf');
+  font-family: 'Avenir';
+  src: url('assets/fonts/avenir-light-webfont.woff2');
   font-weight: 300;
 }
 @font-face {
-  font-family: 'MotivaSans';
-  src: url('assets/fonts/Raleway-Medium.ttf');
+  font-family: 'Avenir';
+  src: url('assets/fonts/avenir-light-webfont.woff2');
   font-weight: 400;
 }
 @font-face {
-  font-family: 'MotivaSans';
-  src: url('assets/fonts/Raleway-Black.ttf');
+  font-family: 'Avenir';
+  src: url('assets/fonts/avenir-medium-webfont.woff2');
   font-weight: 600;
+}
+
+*:focus {
+  animation: glow 2s infinite ease;
+}
+
+@keyframes glow {
+  0%,
+  100% {
+    box-shadow: 1px 1px #1d8758, 0 0 5px 2px var(--deck-2),
+      inset 2px 2px var(--deck-3);
+  }
+  50% {
+    box-shadow: 1px 1px #1d8758, 0 0 4px 4px var(--deck-2),
+      inset 2px 2px var(--deck-3);
+  }
+}
+
+.is-hidden {
+  display: none !important;
 }

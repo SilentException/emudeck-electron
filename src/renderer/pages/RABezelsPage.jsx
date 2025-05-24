@@ -1,19 +1,23 @@
-import React, { useEffect, useState, useContext } from 'react';
+import { useTranslation } from 'react-i18next';
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import { GlobalContext } from 'context/globalContext';
 import Wrapper from 'components/molecules/Wrapper/Wrapper';
+
 import Header from 'components/organisms/Header/Header';
 import Footer from 'components/organisms/Footer/Footer';
 
 import RABezels from 'components/organisms/Wrappers/RABezels';
 
 const RABezelsPage = () => {
+  const { t, i18n } = useTranslation();
   const { state, setState } = useContext(GlobalContext);
   const { bezels } = state;
   const [statePage, setStatePage] = useState({
     disabledNext: false,
     disabledBack: false,
+    dom: undefined,
   });
-  const { disabledNext, disabledBack, data } = statePage;
+  const { disabledNext, disabledBack, data, dom } = statePage;
   const bezelsSet = (bezelStatus) => {
     setState({
       ...state,
@@ -25,12 +29,13 @@ const RABezelsPage = () => {
     if (bezels != '') {
       setStatePage({ ...statePage, disabledNext: false });
     }
-  }, [state]); // <-- here put the parameter to listen
+  }, [state]);
 
   return (
     <Wrapper>
-      <Header title="Configure" bold="game bezels" />
-      <RABezels onClick={bezelsSet} />
+      <Header title={t('RABezelsPage.title')} />
+      <p className="lead">{t('RABezelsPage.description')}</p>
+      <RABezels bezels={bezels} onClick={bezelsSet} />
       <Footer
         next="aspect-ratio-sega"
         disabledNext={disabledNext}

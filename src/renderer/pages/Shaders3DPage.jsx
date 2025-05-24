@@ -1,20 +1,24 @@
-import React, { useEffect, useState, useContext } from 'react';
+import { useTranslation } from 'react-i18next';
+import React, { useState, useContext, useRef, useEffect } from 'react';
 import { GlobalContext } from 'context/globalContext';
 import Wrapper from 'components/molecules/Wrapper/Wrapper';
+
 import Header from 'components/organisms/Header/Header';
 import Footer from 'components/organisms/Footer/Footer';
 
 import Shaders3D from 'components/organisms/Wrappers/Shaders3D';
 
-const Shaders3DPage = () => {
+function Shaders3DPage() {
+  const { t, i18n } = useTranslation();
   const { state, setState } = useContext(GlobalContext);
   const { shaders } = state;
-  const [statePage, setStatePage] = useState({
+  const [statePage] = useState({
     disabledNext: false,
     disabledBack: false,
     data: '',
+    dom: undefined,
   });
-  const { disabledNext, disabledBack, data } = statePage;
+  const { disabledNext, disabledBack, data, dom } = statePage;
   const shaderSet = (shaderStatus) => {
     setState({
       ...state,
@@ -27,7 +31,8 @@ const Shaders3DPage = () => {
 
   return (
     <Wrapper>
-      <Header title="Configure CRT Shader for" bold="Classic 3D Games" />
+      <Header title={t('Shaders3DPage.title')} />
+      <p className="lead">{t('Shaders3DPage.description')}</p>
       <Shaders3D
         data={data}
         onClick={shaderSet}
@@ -35,12 +40,12 @@ const Shaders3DPage = () => {
         disabledBack={disabledBack}
       />
       <Footer
-        next="pegasus-theme"
+        next="controller-layout"
         disabledNext={disabledNext}
         disabledBack={disabledBack}
       />
     </Wrapper>
   );
-};
+}
 
 export default Shaders3DPage;

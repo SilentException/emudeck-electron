@@ -1,75 +1,94 @@
-import React, { useEffect, useState, useContext } from 'react';
+import { useTranslation } from 'react-i18next';
+import React, { useState, useContext, useRef, useEffect } from 'react';
 import { GlobalContext } from 'context/globalContext';
 import Wrapper from 'components/molecules/Wrapper/Wrapper';
+
 import Header from 'components/organisms/Header/Header';
 import Footer from 'components/organisms/Footer/Footer';
 
 import EmulatorConfiguration from 'components/organisms/Wrappers/EmulatorConfiguration';
 
 import {
-  imgdefault,
   imgra,
+  imgares,
   imgdolphin,
   imgprimehack,
   imgppsspp,
   imgduckstation,
-  imgcitra,
+  imgazahar,
   imgpcsx2,
   imgrpcs3,
   imgyuzu,
+  imgeden,
+  imgcitron,
   imgryujinx,
   imgcemu,
   imgxemu,
   imgmame,
   imgvita3k,
+  imgflycast,
   imgxenia,
   imgsrm,
   imgrmg,
   imgscummvm,
-  imgsupermodelista,
-  imgesde,
+  imgsupermodel,
+  imgmodel2,
+  imgbigpemu,
+  imgFrontESDE,
+  imgFrontPegasus,
   imgmelonds,
   imgmgba,
+  imgshadps4,
 } from 'components/utils/images/images';
 
 const images = {
   ra: imgra,
+  ares: imgares,
   dolphin: imgdolphin,
   primehack: imgprimehack,
   ppsspp: imgppsspp,
   duckstation: imgduckstation,
-  citra: imgcitra,
+  azahar: imgazahar,
   pcsx2: imgpcsx2,
   rpcs3: imgrpcs3,
   rmg: imgrmg,
   melonds: imgmelonds,
   yuzu: imgyuzu,
+  eden: imgeden,
+  citron: imgcitron,
   ryujinx: imgryujinx,
   cemu: imgcemu,
   xemu: imgxemu,
   mame: imgmame,
   vita3k: imgvita3k,
+  flycast: imgflycast,
   scummvm: imgscummvm,
-  supermodelista: imgsupermodelista,
+  supermodel: imgsupermodel,
+  model2: imgmodel2,
+  bigpemu: imgbigpemu,
   srm: imgsrm,
-  esde: imgesde,
+  esde: imgFrontESDE,
   mgba: imgmgba,
   xenia: imgxenia,
+  pegasus: imgFrontPegasus,
+  shadps4: imgshadps4,
 };
 
-const EmulatorConfigurationPage = () => {
+function EmulatorConfigurationPage() {
+  const { t, i18n } = useTranslation();
   const { state, setState } = useContext(GlobalContext);
-  const { device, overwriteConfigEmus } = state;
+  const { overwriteConfigEmus, second } = state;
 
-  const [statePage, setStatePage] = useState({
+  const [statePage] = useState({
     disabledNext: false,
     disabledBack: false,
     data: '',
+    dom: undefined,
   });
-  const { disabledNext, disabledBack, data } = statePage;
+  const { disabledNext, disabledBack, data, dom } = statePage;
 
   const toggleEmus = (emulatorProp) => {
-    let { id, name, status } = overwriteConfigEmus[emulatorProp];
+    const { status } = overwriteConfigEmus[emulatorProp];
 
     setState({
       ...state,
@@ -85,20 +104,22 @@ const EmulatorConfigurationPage = () => {
 
   let nextPage;
 
-  if (overwriteConfigEmus.ra.status == true) {
+  if (overwriteConfigEmus.ra.status === true) {
     nextPage = 'auto-save';
   } else if (
-    overwriteConfigEmus.ra.status == false &&
-    overwriteConfigEmus.dolphin.status == false
+    overwriteConfigEmus.ra.status === false &&
+    overwriteConfigEmus.dolphin.status === false
   ) {
-    nextPage = 'pegasus-theme';
+    nextPage = 'controller-layout';
   } else {
     nextPage = 'aspect-ratio-dolphin';
   }
 
   return (
     <Wrapper>
-      <Header title="Emulator" bold="Configurations" />
+      <Header title={t('EmulatorConfigurationPage.title')} />
+
+      <p className="lead">{t('EmulatorConfigurationPage.description')}</p>
       <EmulatorConfiguration data={data} onClick={toggleEmus} images={images} />
       <Footer
         next={nextPage}
@@ -107,6 +128,6 @@ const EmulatorConfigurationPage = () => {
       />
     </Wrapper>
   );
-};
+}
 
 export default EmulatorConfigurationPage;

@@ -1,16 +1,20 @@
-import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import React, { useState, useRef, useEffect } from 'react';
 import Wrapper from 'components/molecules/Wrapper/Wrapper';
+
 import Header from 'components/organisms/Header/Header';
 import Footer from 'components/organisms/Footer/Footer';
 
 import UpdateEmus from 'components/organisms/Wrappers/UpdateEmus';
 
-const UpdateEmusPage = () => {
+function UpdateEmusPage() {
+  const { t, i18n } = useTranslation();
   const [statePage] = useState({
     disabledNext: false,
     disabledBack: false,
+    dom: undefined,
   });
-  const { disabledNext, disabledBack } = statePage;
+  const { disabledNext, disabledBack, dom } = statePage;
 
   const ipcChannel = window.electron.ipcRenderer;
 
@@ -28,7 +32,8 @@ const UpdateEmusPage = () => {
 
   return (
     <Wrapper>
-      <Header title="Update your" bold="Emulators & Tools" />
+      <Header title={t('UpdateEmusPage.title')} />
+      <p className="lead">{t('UpdateEmusPage.description')}</p>
       <UpdateEmus
         disabledNext={disabledNext}
         disabledBack={disabledBack}
@@ -42,6 +47,6 @@ const UpdateEmusPage = () => {
       />
     </Wrapper>
   );
-};
+}
 
 export default UpdateEmusPage;

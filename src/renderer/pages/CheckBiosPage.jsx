@@ -1,39 +1,45 @@
-import React, { useEffect, useState, useContext } from 'react';
+import { useTranslation } from 'react-i18next';
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import { GlobalContext } from 'context/globalContext';
 import Wrapper from 'components/molecules/Wrapper/Wrapper';
+
 import Header from 'components/organisms/Header/Header';
 import Footer from 'components/organisms/Footer/Footer';
 import { useNavigate } from 'react-router-dom';
 import CheckBios from 'components/organisms/Wrappers/CheckBios';
 
-const CheckBiosPage = () => {
+function CheckBiosPage() {
+  const { t, i18n } = useTranslation();
   const { state, setState } = useContext(GlobalContext);
 
   const [statePage, setStatePage] = useState({
     disabledNext: true,
     disabledBack: false,
     showNotification: false,
+    dom: undefined,
   });
 
-  //TODO: Use only one state for bioses, doing it this way is quick but madness
+  // TODO: Use only one state for bioses, doing it this way is quick but madness
   const [ps1Bios, setps1Bios] = useState(null);
   const [ps2Bios, setps2Bios] = useState(null);
   const [switchBios, setSwitchBios] = useState(null);
+  const [edenBios, setEdenBios] = useState(null);
+  const [citronBios, setCitronBios] = useState(null);
+  const [ryujinxBios, setRyujinxBios] = useState(null);
   const [segaCDBios, setSegaCDBios] = useState(null);
   const [saturnBios, setSaturnBios] = useState(null);
   const [dreamcastBios, setDreamcastBios] = useState(null);
   const [DSBios, setDSBios] = useState(null);
 
-  const { disabledNext, disabledBack, showNotification } = statePage;
+  const { disabledNext, disabledBack, showNotification, dom } = statePage;
   const navigate = useNavigate();
   const ipcChannel = window.electron.ipcRenderer;
 
   const checkBios = (biosCommand) => {
     ipcChannel.sendMessage('emudeck', [`${biosCommand}|||${biosCommand}`]);
     ipcChannel.once(`${biosCommand}`, (status) => {
-      console.log({ biosCommand });
       status = status.stdout;
-      console.log({ status });
+
       status = status.replace('\n', '');
       let biosStatus;
       status.includes('true') ? (biosStatus = true) : (biosStatus = false);
@@ -47,6 +53,15 @@ const CheckBiosPage = () => {
           break;
         case 'checkYuzuBios':
           setSwitchBios(biosStatus);
+          break;
+        case 'checkEdenBios':
+          setEdenBios(biosStatus);
+          break;
+        case 'checkRyujinxBios':
+          setRyujinxBios(biosStatus);
+          break;
+        case 'checkCitronBios':
+          setCitronBios(biosStatus);
           break;
         case 'checkSegaCDBios':
           setSegaCDBios(biosStatus);
@@ -68,6 +83,8 @@ const CheckBiosPage = () => {
     checkBios('checkPS1BIOS');
     checkBios('checkPS2BIOS');
     checkBios('checkYuzuBios');
+    checkBios('checkRyujinxBios');
+    checkBios('checkCitronBios');
     checkBios('checkSegaCDBios');
     checkBios('checkSaturnBios');
     checkBios('checkDreamcastBios');
@@ -78,6 +95,8 @@ const CheckBiosPage = () => {
     checkBios('checkPS1BIOS');
     checkBios('checkPS2BIOS');
     checkBios('checkYuzuBios');
+    checkBios('checkRyujinxBios');
+    checkBios('checkCitronBios');
     checkBios('checkSegaCDBios');
     checkBios('checkSaturnBios');
     checkBios('checkDreamcastBios');
@@ -86,12 +105,15 @@ const CheckBiosPage = () => {
 
   return (
     <Wrapper>
-      <Header title="Bios files" bold="checker" />
+      <Header title={t('CheckBiosPage.title')} />
+      <p className="lead">{t('CheckBiosPage.description')}</p>
       <CheckBios
         checkBiosAgain={checkBiosAgain}
         ps1Bios={ps1Bios}
         ps2Bios={ps2Bios}
         switchBios={switchBios}
+        ryujinxBios={ryujinxBios}
+        citronBios={citronBios}
         segaCDBios={segaCDBios}
         saturnBios={saturnBios}
         dreamcastBios={dreamcastBios}
@@ -105,6 +127,6 @@ const CheckBiosPage = () => {
       />
     </Wrapper>
   );
-};
+}
 
 export default CheckBiosPage;

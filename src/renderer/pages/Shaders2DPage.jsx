@@ -1,20 +1,24 @@
-import React, { useEffect, useState, useContext } from 'react';
+import { useTranslation } from 'react-i18next';
+import React, { useState, useContext, useRef, useEffect } from 'react';
 import { GlobalContext } from 'context/globalContext';
 import Wrapper from 'components/molecules/Wrapper/Wrapper';
+
 import Header from 'components/organisms/Header/Header';
 import Footer from 'components/organisms/Footer/Footer';
 
 import Shaders2D from 'components/organisms/Wrappers/Shaders2D';
 
-const Shaders2DPage = () => {
+function Shaders2DPage() {
+  const { t, i18n } = useTranslation();
   const { state, setState } = useContext(GlobalContext);
   const { shaders } = state;
-  const [statePage, setStatePage] = useState({
+  const [statePage] = useState({
     disabledNext: false,
     disabledBack: false,
     data: '',
+    dom: undefined,
   });
-  const { disabledNext, disabledBack, data } = statePage;
+  const { disabledNext, disabledBack, data, dom } = statePage;
   const shaderSet = (shaderStatus) => {
     setState({
       ...state,
@@ -27,7 +31,8 @@ const Shaders2DPage = () => {
 
   return (
     <Wrapper>
-      <Header title="Configure CRT Shader for" bold="Classic 2D Games" />
+      <Header title={t('Shaders2DPage.title')} />
+      <p className="lead">{t('Shaders2DPage.description')}</p>
       <Shaders2D
         data={data}
         onClick={shaderSet}
@@ -41,6 +46,6 @@ const Shaders2DPage = () => {
       />
     </Wrapper>
   );
-};
+}
 
 export default Shaders2DPage;

@@ -1,20 +1,24 @@
-import React, { useEffect, useState, useContext } from 'react';
+import { useTranslation } from 'react-i18next';
+import React, { useState, useContext, useRef, useEffect } from 'react';
 import { GlobalContext } from 'context/globalContext';
 import Wrapper from 'components/molecules/Wrapper/Wrapper';
+
 import Header from 'components/organisms/Header/Header';
 import Footer from 'components/organisms/Footer/Footer';
 
 import ShadersHandhelds from 'components/organisms/Wrappers/ShadersHandhelds';
 
-const ShadersHandheldsPage = () => {
+function ShadersHandheldsPage() {
+  const { t, i18n } = useTranslation();
   const { state, setState } = useContext(GlobalContext);
   const { shaders } = state;
-  const [statePage, setStatePage] = useState({
+  const [statePage] = useState({
     disabledNext: false,
     disabledBack: false,
     data: '',
+    dom: undefined,
   });
-  const { disabledNext, disabledBack, data } = statePage;
+  const { disabledNext, disabledBack, data, dom } = statePage;
   const shaderSet = (shaderStatus) => {
     setState({
       ...state,
@@ -27,7 +31,8 @@ const ShadersHandheldsPage = () => {
 
   return (
     <Wrapper>
-      <Header title="Configure LCD Shader for" bold="Handheld Systems" />
+      <Header title={t('ShadersHandheldsPage.title')} />
+      <p className="lead">{t('ShadersHandheldsPage.description')}</p>
       <ShadersHandhelds
         data={data}
         onClick={shaderSet}
@@ -41,6 +46,6 @@ const ShadersHandheldsPage = () => {
       />
     </Wrapper>
   );
-};
+}
 
 export default ShadersHandheldsPage;

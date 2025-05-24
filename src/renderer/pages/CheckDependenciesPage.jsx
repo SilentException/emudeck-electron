@@ -1,20 +1,26 @@
-import React, { useEffect, useState, useContext } from 'react';
+import { useTranslation } from 'react-i18next';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GlobalContext } from 'context/globalContext';
 import Wrapper from 'components/molecules/Wrapper/Wrapper';
-import Header from 'components/organisms/Header/Header';
-import Footer from 'components/organisms/Footer/Footer';
-import { Img, BtnSimple, ProgressBar } from 'getbasecore/Atoms';
-import { iconSuccess, iconDanger } from 'components/utils/images/images';
-function CheckDependenciesPage() {
-  const { state, setState } = useContext(GlobalContext);
 
+import Header from 'components/organisms/Header/Header';
+import { Img } from 'getbasecore/Atoms';
+import Card from 'components/molecules/Card/Card';
+import { iconSuccess, iconDanger } from 'components/utils/images/images';
+import ProgressBar from 'components/atoms/ProgressBar/ProgressBar';
+import EmuModal from 'components/molecules/EmuModal/EmuModal';
+
+import gitLogo from 'assets/git-logo.png';
+import steamLogo from 'assets/steam-logo.png';
+
+function CheckDependenciesPage() {
+  const { t, i18n } = useTranslation();
   const [stateGIT, setStateGIT] = useState({
     statusGIT: null,
   });
   const { statusGIT } = stateGIT;
   const [state7Zip, setState7Zip] = useState({
-    status7Zip: null,
+    status7Zip: true,
   });
   const { status7Zip } = state7Zip;
   const [stateSteam, setStateSteam] = useState({
@@ -24,6 +30,12 @@ function CheckDependenciesPage() {
 
   const ipcChannel = window.electron.ipcRenderer;
   const navigate = useNavigate();
+
+  const [statePage, setStatePage] = useState({
+    dom: undefined,
+    modal: false,
+  });
+  const { dom, modal } = statePage;
 
   const [counter, setCounter] = useState(0);
   useEffect(() => {
@@ -45,7 +57,6 @@ function CheckDependenciesPage() {
     });
     ipcChannel.sendMessage('validate-git');
     ipcChannel.once('validate-git', (messageGIT) => {
-      console.log({ messageGIT });
       if (messageGIT.stdout === true) {
         setStateGIT({
           statusGIT: true,
@@ -64,7 +75,6 @@ function CheckDependenciesPage() {
     });
     ipcChannel.sendMessage('validate-7Zip');
     ipcChannel.once('validate-7Zip', (message7Zip) => {
-      console.log({ message7Zip });
       if (message7Zip.stdout === true) {
         setState7Zip({
           status7Zip: true,
@@ -83,7 +93,6 @@ function CheckDependenciesPage() {
     });
     ipcChannel.sendMessage('validate-Steam');
     ipcChannel.once('validate-Steam', (messageSteam) => {
-      console.log({ messageSteam });
       if (messageSteam.stdout === true) {
         setStateSteam({
           statusSteam: true,
@@ -96,98 +105,111 @@ function CheckDependenciesPage() {
     });
   };
 
+  const showModal = (url) => {
+    const modalData = {
+      active: true,
+      header: <span className="h4">Downloading dependency</span>,
+      body: (
+        <>
+          <p>
+            If your download doesn't start please open this url in a browser:
+          </p>
+          <p>
+            <strong>{url}</strong>
+          </p>
+          <p>
+            After that, restart EmuDeck, if the problem persists restart your
+            device.
+          </p>
+        </>
+      ),
+    };
+    setStatePage({ ...statePage, modal: modalData });
+  };
+
   useEffect(() => {
     ipcChannel.sendMessage('system-info-in');
     ipcChannel.once('system-info-out', (system) => {
       if (system === 'win32') {
-        //GIT?
+        // GIT?
         checkGit();
-        //7ZIP?
+        // 7ZIP?
         check7Zip();
         // //Steam?
         checkSteam();
+        navigate('/patreon-login');
       } else {
-        navigate('/check-updates');
+        navigate('/patreon-login');
       }
     });
   }, []);
 
   useEffect(() => {
     if (statusGIT === true && status7Zip === true) {
-      navigate('/check-updates');
+      navigate('/patreon-login');
     }
   }, [statusGIT, status7Zip]);
 
   return (
-    <Wrapper>
-      <Header title="Installing dependencies..." />
+    <Wrapper aside={false}>
+      {statusGIT === undefined ||
+        (statusSteam === undefined && (
+          <Header title="Checking dependencies..." />
+        ))}
 
-      <ul>
-        <li>
-          <p className="h5">
-            GIT{' '}
-            <Img
-              src={statusGIT === true ? iconSuccess : iconDanger}
-              css="icon icon--xs"
-              alt="OK"
-            />
-          </p>
-          {statusGIT === undefined && (
-            <>
-              <span className="h6">Installing...</span>
-              <ProgressBar css="progress--success" value={counter} max="100" />
-            </>
-          )}
+      {!statusGIT ||
+        (!statusSteam && (
+          <>
+            <Header title="Missing dependencies..." />
+            <p className="lead">
+              Please install the following programs, EmuDeck needs them to work.
+              After that, restart EmuDeck, if the problem persists restart your
+              device.
+            </p>
+          </>
+        ))}
 
-          {statusGIT === false && status7Zip === true && (
-            <span className="h6">Please restart EmuDeck to continue</span>
-          )}
-          <hr />
-        </li>
-        <li>
-          <p className="h5">
-            7Zip{' '}
-            <Img
-              src={status7Zip === true ? iconSuccess : iconDanger}
-              css="icon icon--xs"
-              alt="OK"
-            />
-          </p>
-          {status7Zip === undefined && (
-            <>
-              <span className="h6">Installing...</span>
-              <ProgressBar css="progress--success" value={counter} max="100" />
-            </>
-          )}
-          <hr />
-        </li>
-        <li>
-          <p className="h5">
-            Steam{' '}
-            <Img
-              src={statusSteam === true ? iconSuccess : iconDanger}
-              css="icon icon--xs"
-              alt="OK"
-            />
-          </p>
-          {statusSteam === undefined && (
-            <>
-              <span className="h6">Checking...</span>
-              <ProgressBar css="progress--success" value={counter} max="100" />
-            </>
-          )}
-          {statusSteam !== true && (
-            <a
-              className="btn-simple btn-simple--1 btn-simple--xs"
-              href="https://store.steampowered.com/about/"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Install Steam
-            </a>
-          )}
-        </li>
-      </ul>
+      <div className="container--grid">
+        {statusGIT !== true && (
+          <div data-col-sm="2">
+            <Card css="is-selected">
+              <img src={gitLogo} alt="GIT" />
+              <a
+                className="btn-simple btn-simple--1 btn-simple--xs"
+                href="https://github.com/git-for-windows/git/releases/download/v2.43.0.windows.1/Git-2.43.0-64-bit.exe"
+                rel="noreferrer"
+                onClick={() =>
+                  showModal(
+                    'https://github.com/git-for-windows/git/releases/download/v2.43.0.windows.1/Git-2.43.0-64-bit.exe'
+                  )
+                }
+              >
+                Download GIT
+              </a>
+            </Card>
+          </div>
+        )}
+        {statusSteam !== true && (
+          <div data-col-sm="2">
+            <Card css="is-selected">
+              <img src={steamLogo} alt="Steam" />
+              <a
+                className="btn-simple btn-simple--1 btn-simple--xs"
+                href="https://cdn.akamai.steamstatic.com/client/installer/SteamSetup.exe"
+                rel="noreferrer"
+                onClick={() =>
+                  showModal(
+                    'https://cdn.akamai.steamstatic.com/client/installer/SteamSetup.exe'
+                  )
+                }
+              >
+                Install Steam
+              </a>
+            </Card>
+          </div>
+        )}
+      </div>
+      <EmuModal modal={modal} />
     </Wrapper>
   );
 }
